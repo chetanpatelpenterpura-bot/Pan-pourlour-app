@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pan Parlour Hisab</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background: #f1f3f6;
+}
+
+.container {
+  max-width: 400px;
+  margin: 50px auto;
+  background: white;
+  padding: 25px;
+  border-radius: 15px;
+  box-shadow: 0 3px 15px #ccc;
+}
+
+h2 {
+  text-align: center;
+  color: #176b45;
+}
+
+p {
+  text-align: center;
+  color: #666;
+}
+
+input {
+  width: 100%;
+  padding: 14px;
+  margin: 10px 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #176b45;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.secondary {
+  background: #333;
+}
+
+a {
+  display: block;
+  text-align: center;
+  margin-top: 18px;
+  color: #176b45;
+}
+
+#message {
+  text-align: center;
+  color: red;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🍃 Pan Parlour Hisab</h2>
+<p>Welcome to Your Shop Management App</p>
+
+<div id="login">
+<h3>Login</h3>
+
+<input
+  type="tel"
+  id="mobile"
+  placeholder="Mobile Number"
+  maxlength="10">
+
+<input
+  type="password"
+  id="password"
+  placeholder="Password">
+
+<button onclick="login()">Login</button>
+
+<a href="#" onclick="showRegister()">
+Create New Account
+</a>
+
+<a href="#" onclick="showForgot()">
+Forgot Password?
+</a>
+</div>
+
+<div id="register" hidden>
+<h3>Create Account</h3>
+
+<input
+  type="tel"
+  id="newMobile"
+  placeholder="Mobile Number"
+  maxlength="10">
+
+<input
+  type="password"
+  id="newPassword"
+  placeholder="Create Password">
+
+<button onclick="register()">Create Account</button>
+
+<a href="#" onclick="showLogin()">Back to Login</a>
+</div>
+
+<div id="forgot" hidden>
+<h3>Forgot Password</h3>
+
+<input
+  type="tel"
+  id="forgotMobile"
+  placeholder="Registered Mobile Number"
+  maxlength="10">
+
+<button onclick="forgotPassword()">
+Send OTP
+</button>
+
+<a href="#" onclick="showLogin()">Back to Login</a>
+</div>
+
+<p id="message"></p>
+
+</div>
+
+<script>
+function showRegister() {
+  loginBox(false);
+  document.getElementById("register").hidden = false;
+}
+
+function showForgot() {
+  loginBox(false);
+  document.getElementById("forgot").hidden = false;
+}
+
+function showLogin() {
+  loginBox(true);
+  document.getElementById("register").hidden = true;
+  document.getElementById("forgot").hidden = true;
+}
+
+function loginBox(show) {
+  document.getElementById("login").hidden = !show;
+}
+
+async function login() {
+  document.getElementById("message").innerText =
+    "Login Backend setup is pending.";
+}
+
+async function register() {
+  document.getElementById("message").innerText =
+    "Account Registration Backend setup is pending.";
+}
+
+async function forgotPassword() {
+  document.getElementById("message").innerText =
+    "OTP Backend setup is pending.";
+}
+</script>
+
+</body>
+</html>
