@@ -1,10 +1,788 @@
-rules_version = '2';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pan Parlour Hisab</title>
 
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
-    }
-  }
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f1f7f3;color:#183b2a;font-family:Arial,sans-serif}
+header{background:#176b45;color:white;text-align:center;padding:18px}
+header h2{margin:0;color:white}
+.container{max-width:1100px;margin:auto;padding:14px}
+.card{background:white;padding:16px;border-radius:13px;margin-bottom:14px;box-shadow:0 2px 10px #dce9df}
+h2,h3{color:#176b45}
+input,select,textarea{width:100%;padding:12px;margin:6px 0;border:1px solid #ccdacf;border-radius:8px;font-size:15px;background:white}
+button{background:#176b45;color:white;border:0;padding:11px 14px;border-radius:8px;cursor:pointer;font-weight:bold;margin:3px}
+button:hover{background:#105536}
+.danger{background:#b83232}
+.secondary{background:#557567}
+.full{width:100%;margin-top:8px}
+.hidden{display:none!important}
+.tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:12px;padding-bottom:5px}
+.tabs button{white-space:nowrap}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.stat{background:#e7f4eb;padding:13px;border-radius:10px;min-width:0}
+.stat p{margin:0;font-size:13px;color:#567463}
+.stat h2{margin:8px 0 0;font-size:19px;overflow-wrap:anywhere}
+table{width:100%;border-collapse:collapse;min-width:500px}
+td,th{padding:10px;border-bottom:1px solid #e2e8e3;text-align:left;font-size:13px}
+th{background:#e7f4eb}
+.tablewrap{overflow-x:auto}
+.message{font-size:14px;color:#b83232}
+.small{font-size:12px;color:#657b6d}
+.badge{background:#e7f4eb;padding:5px 8px;border-radius:8px}
+@media(min-width:700px){.stats{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>🍃 PAN PARLOUR HISAB</h2>
+<p>Complete Shop Management System</p>
+</header>
+
+<div class="container">
+
+<!-- LOGIN -->
+
+<div id="auth" class="card">
+<h2 id="authTitle">Login</h2>
+<div id="nameBox" class="hidden">
+<input id="name" placeholder="Your Name">
+</div>
+<input id="email" type="email" placeholder="Email Address">
+<input id="password" type="password" placeholder="Password">
+<button class="full" id="authButton">Login</button>
+<button class="secondary full" id="toggle">Create New Account</button>
+<button class="secondary full" id="forgot">Forgot Password?</button>
+<p id="authMessage" class="message"></p>
+</div>
+
+<!-- APP -->
+
+<div id="app" class="hidden">
+
+<div class="card">
+<b id="welcome"></b>
+<p id="userEmail" class="small"></p>
+<span id="syncStatus" class="badge">Connecting...</span>
+<button id="logout" class="danger">Logout</button>
+</div>
+
+<div class="stats">
+<div class="stat"><p>Total Sales</p><h2 id="totalSales">₹0</h2></div>
+<div class="stat"><p>Gross Profit</p><h2 id="grossProfit">₹0</h2></div>
+<div class="stat"><p>Total Expenses</p><h2 id="totalExpenses">₹0</h2></div>
+<div class="stat"><p>Net Profit</p><h2 id="netProfit">₹0</h2></div>
+<div class="stat"><p>Stock Products</p><h2 id="productCount">0</h2></div>
+<div class="stat"><p>Stock Value</p><h2 id="stockValue">₹0</h2></div>
+<div class="stat"><p>Customer Udhaar</p><h2 id="totalUdhaar">₹0</h2></div>
+<div class="stat"><p>Today's Sales</p><h2 id="todaySales">₹0</h2></div>
+</div>
+
+<div class="tabs">
+<button onclick="tab('home')">Home</button>
+<button onclick="tab('products')">Products</button>
+<button onclick="tab('purchase')">Purchase</button>
+<button onclick="tab('sales')">Sales</button>
+<button onclick="tab('expenses')">Expenses</button>
+<button onclick="tab('udhaar')">Udhaar</button>
+<button onclick="tab('reports')">Reports</button>
+</div>
+
+<!-- HOME -->
+
+<section id="home" class="card section">
+<h2>Shop Dashboard</h2>
+<p>Welcome to your Pan Parlour Hisab app.</p>
+<p>All your records are saved in Firebase Cloud.</p>
+<h3>Business Summary</h3>
+<p>Gross Profit = Sales - Cost of Sold Products</p>
+<p>Net Profit = Gross Profit - Expenses</p>
+</section>
+
+<!-- PRODUCTS -->
+
+<section id="products" class="card section hidden">
+<h2>Product Management</h2>
+
+<form id="productForm">
+<input name="name" placeholder="Product Name" required>
+<input name="category" placeholder="Category (Pan Masala, Dairy, Cold Drink...)">
+<input name="purchase" type="number" min="0" step=".01" placeholder="Purchase Price ₹" required>
+<input name="selling" type="number" min="0" step=".01" placeholder="Selling Price ₹" required>
+<input name="quantity" type="number" min="0" step=".01" placeholder="Opening Stock Quantity" required>
+<button class="full">Add Product</button>
+</form>
+
+<h3>All Products</h3>
+<div id="productList"></div>
+</section>
+
+<!-- PURCHASE -->
+
+<section id="purchase" class="card section hidden">
+<h2>Purchase Management</h2>
+
+<form id="purchaseForm">
+<select name="product" id="purchaseProduct" required>
+<option value="">Select Product</option>
+</select>
+<input name="quantity" type="number" min=".01" step=".01" placeholder="Quantity Purchased" required>
+<input name="price" type="number" min="0" step=".01" placeholder="Purchase Price Per Unit ₹" required>
+<input name="date" type="date" required>
+<input name="supplier" placeholder="Supplier Name">
+<button class="full">Save Purchase</button>
+</form>
+
+<h3>Purchase History</h3>
+<div id="purchaseList"></div>
+</section>
+
+<!-- SALES -->
+
+<section id="sales" class="card section hidden">
+<h2>Daily Sales</h2>
+
+<form id="salesForm">
+<select name="product" id="saleProduct" required>
+<option value="">Select Product</option>
+</select>
+<input name="quantity" type="number" min=".01" step=".01" placeholder="Quantity Sold" required>
+<input name="price" type="number" min="0" step=".01" placeholder="Selling Price Per Unit ₹" required>
+<input name="date" type="date" required>
+<input name="customer" placeholder="Customer Name (Optional)">
+<select name="payment">
+<option value="Cash">Cash</option>
+<option value="UPI">UPI</option>
+<option value="Card">Card</option>
+<option value="Credit">Udhaar</option>
+</select>
+<button class="full">Save Sale</button>
+</form>
+
+<h3>Sales History</h3>
+<div id="salesList"></div>
+</section>
+
+<!-- EXPENSES -->
+
+<section id="expenses" class="card section hidden">
+<h2>Shop Expenses</h2>
+
+<form id="expenseForm">
+<input name="description" placeholder="Expense Name" required>
+<input name="amount" type="number" min=".01" step=".01" placeholder="Amount ₹" required>
+<input name="date" type="date" required>
+<select name="category">
+<option>Rent</option>
+<option>Electricity</option>
+<option>Salary</option>
+<option>Transport</option>
+<option>Maintenance</option>
+<option>Other</option>
+</select>
+<button class="full">Save Expense</button>
+</form>
+
+<h3>Expense History</h3>
+<div id="expenseList"></div>
+</section>
+
+<!-- UDHAAR -->
+
+<section id="udhaar" class="card section hidden">
+<h2>Customer Udhaar</h2>
+
+<form id="udhaarForm">
+<input name="customer" placeholder="Customer Name" required>
+<input name="mobile" placeholder="Mobile Number">
+<input name="amount" type="number" min=".01" step=".01" placeholder="Udhaar Amount ₹" required>
+<input name="date" type="date" required>
+<input name="note" placeholder="Note">
+<button class="full">Add Udhaar</button>
+</form>
+
+<h3>Receive Udhaar Payment</h3>
+
+<form id="collectionForm">
+<select name="customer" id="collectionCustomer" required>
+<option value="">Select Customer</option>
+</select>
+<input name="amount" type="number" min=".01" step=".01" placeholder="Received Amount ₹" required>
+<input name="date" type="date" required>
+<button class="full">Receive Payment</button>
+</form>
+
+<h3>Customer Balances</h3>
+<div id="udhaarList"></div>
+
+<h3>Payment History</h3>
+<div id="collectionList"></div>
+</section>
+
+<!-- REPORTS -->
+
+<section id="reports" class="card section hidden">
+<h2>Business Reports</h2>
+
+<label>From Date</label>
+<input type="date" id="fromDate">
+
+<label>To Date</label>
+<input type="date" id="toDate">
+
+<button class="full" id="filterReport">Generate Report</button>
+
+<div id="reportResult"></div>
+</section>
+
+<p id="appMessage" class="message"></p>
+
+</div>
+</div>
+
+<script type="module">
+
+import {initializeApp}
+from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+
+import {
+getAuth,createUserWithEmailAndPassword,
+signInWithEmailAndPassword,sendPasswordResetEmail,
+onAuthStateChanged,updateProfile,signOut
+} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
+
+import {
+getFirestore,collection,addDoc,onSnapshot,
+doc,runTransaction,serverTimestamp,deleteDoc
+} from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+
+
+// 1. YAHAN APNA FIREBASE CONFIG PASTE KARO
+
+const firebaseConfig={
+apiKey:"YOUR_API_KEY",
+authDomain:"YOUR_AUTH_DOMAIN",
+projectId:"YOUR_PROJECT_ID",
+storageBucket:"YOUR_STORAGE_BUCKET",
+messagingSenderId:"YOUR_MESSAGING_SENDER_ID",
+appId:"YOUR_APP_ID"
+};
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+
+let user=null;
+let registerMode=false;
+let unsubscribers=[];
+
+let data={
+products:[],
+purchase:[],
+sales:[],
+expenses:[],
+udhaar:[],
+collections:[]
+};
+
+const $=id=>document.getElementById(id);
+
+const money=n=>"₹"+Number(n||0).toLocaleString("en-IN",{
+minimumFractionDigits:2,maximumFractionDigits:2
+});
+
+const today=()=>{
+const d=new Date();
+d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+return d.toISOString().slice(0,10);
+};
+
+document.querySelectorAll('input[type="date"]').forEach(
+x=>x.value=today()
+);
+
+function msg(text,error=false){
+$("appMessage").textContent=text;
+$("appMessage").style.color=error?"red":"green";
 }
+
+function esc(v){
+return String(v??"").replace(/[&<>"']/g,c=>({
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[c]));
+}
+
+function path(type){
+return collection(db,"users",user.uid,type);
+}
+
+window.tab=function(name){
+document.querySelectorAll(".section").forEach(
+x=>x.classList.add("hidden")
+);
+$(name).classList.remove("hidden");
+};
+
+
+// AUTHENTICATION
+
+$("toggle").onclick=()=>{
+registerMode=!registerMode;
+$("authTitle").textContent=registerMode?"Create Account":"Login";
+$("authButton").textContent=registerMode?"Register":"Login";
+$("nameBox").classList.toggle("hidden",!registerMode);
+$("toggle").textContent=registerMode?"Back to Login":"Create New Account";
+$("authMessage").textContent="";
+};
+
+$("authButton").onclick=async()=>{
+try{
+const email=$("email").value.trim();
+const password=$("password").value;
+
+if(!email||password.length<6){
+throw Error("Enter email and password (minimum 6 characters).");
+}
+
+if(registerMode){
+const name=$("name").value.trim();
+if(!name)throw Error("Enter your name.");
+
+const result=await createUserWithEmailAndPassword(auth,email,password);
+await updateProfile(result.user,{displayName:name});
+}else{
+await signInWithEmailAndPassword(auth,email,password);
+}
+}catch(e){
+$("authMessage").textContent=e.message;
+}
+};
+
+$("forgot").onclick=async()=>{
+try{
+const email=$("email").value.trim();
+if(!email)throw Error("Enter your email first.");
+await sendPasswordResetEmail(auth,email);
+$("authMessage").textContent="Password reset link sent.";
+}catch(e){
+$("authMessage").textContent=e.message;
+}
+};
+
+$("logout").onclick=()=>signOut(auth);
+
+
+// LIVE CLOUD SYNC
+
+function startSync(){
+unsubscribers.forEach(fn=>fn());
+unsubscribers=[];
+
+const types=["products","purchase","sales","expenses","udhaar","collections"];
+
+types.forEach(type=>{
+const unsub=onSnapshot(path(type),snap=>{
+data[type]=snap.docs.map(d=>({id:d.id,...d.data()}));
+render();
+$("syncStatus").textContent="Live Sync Connected ✓";
+},error=>msg(error.message,true));
+
+unsubscribers.push(unsub);
+});
+}
+
+
+// PRODUCT DROPDOWNS
+
+function updateDropdowns(){
+
+const products=data.products;
+
+["saleProduct","purchaseProduct"].forEach(id=>{
+$(id).innerHTML='<option value="">Select Product</option>'+
+products.map(p=>
+`<option value="${esc(p.id)}">${esc(p.name)} (Stock: ${p.quantity})</option>`
+).join("");
+});
+
+const customers=[...new Set(data.udhaar.map(x=>x.customer))];
+
+$("collectionCustomer").innerHTML=
+'<option value="">Select Customer</option>'+
+customers.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+}
+
+
+// TABLE
+
+function makeTable(items,cols,type){
+
+if(!items.length)return "<p>No records found.</p>";
+
+let html='<div class="tablewrap"><table><tr>';
+
+cols.forEach(c=>html+=`<th>${c[0]}</th>`);
+html+="<th>Action</th></tr>";
+
+items.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).forEach(x=>{
+html+="<tr>";
+cols.forEach(c=>html+=`<td>${esc(c[1](x))}</td>`);
+html+=`<td><button class="danger" data-delete="${type}" data-id="${x.id}">Delete</button></td>`;
+html+="</tr>";
+});
+
+return html+"</table></div>";
+}
+
+
+// DASHBOARD AND RENDER
+
+function render(){
+
+updateDropdowns();
+
+const sales=data.sales.reduce((a,x)=>a+Number(x.total||0),0);
+const gross=data.sales.reduce((a,x)=>a+Number(x.profit||0),0);
+const expenses=data.expenses.reduce((a,x)=>a+Number(x.amount||0),0);
+
+const stockValue=data.products.reduce(
+(a,x)=>a+Number(x.quantity||0)*Number(x.purchase||0),0
+);
+
+const creditSales=data.sales.filter(x=>x.payment==="Credit");
+
+const totalUdhaar=
+data.udhaar.reduce((a,x)=>a+Number(x.amount||0),0)
+-data.collections.reduce((a,x)=>a+Number(x.amount||0),0)
++creditSales.reduce((a,x)=>a+Number(x.total||0),0);
+
+$("totalSales").textContent=money(sales);
+$("grossProfit").textContent=money(gross);
+$("totalExpenses").textContent=money(expenses);
+$("netProfit").textContent=money(gross-expenses);
+$("productCount").textContent=data.products.length;
+$("stockValue").textContent=money(stockValue);
+$("totalUdhaar").textContent=money(Math.max(0,totalUdhaar));
+
+$("todaySales").textContent=money(
+data.sales.filter(x=>x.date===today())
+.reduce((a,x)=>a+Number(x.total||0),0)
+);
+
+$("productList").innerHTML=makeTable(data.products,[
+["Product",x=>x.name],
+["Category",x=>x.category],
+["Stock",x=>x.quantity],
+["Purchase",x=>money(x.purchase)],
+["Selling",x=>money(x.selling)]
+],"products");
+
+$("purchaseList").innerHTML=makeTable(data.purchase,[
+["Date",x=>x.date],
+["Product",x=>x.productName],
+["Quantity",x=>x.quantity],
+["Total",x=>money(x.total)]
+],"purchase");
+
+$("salesList").innerHTML=makeTable(data.sales,[
+["Date",x=>x.date],
+["Product",x=>x.productName],
+["Qty",x=>x.quantity],
+["Total",x=>money(x.total)],
+["Profit",x=>money(x.profit)]
+],"sales");
+
+$("expenseList").innerHTML=makeTable(data.expenses,[
+["Date",x=>x.date],
+["Description",x=>x.description],
+["Category",x=>x.category],
+["Amount",x=>money(x.amount)]
+],"expenses");
+
+const customers={};
+
+data.udhaar.forEach(x=>{
+const key=x.customer;
+customers[key]=(customers[key]||0)+Number(x.amount||0);
+});
+
+data.collections.forEach(x=>{
+customers[x.customer]=(customers[x.customer]||0)-Number(x.amount||0);
+});
+
+data.sales.filter(x=>x.payment==="Credit").forEach(x=>{
+customers[x.customer||"Unknown"]=(customers[x.customer||"Unknown"]||0)+Number(x.total||0);
+});
+
+let html='<div class="tablewrap"><table><tr><th>Customer</th><th>Balance</th></tr>';
+
+Object.entries(customers).forEach(([name,balance])=>{
+html+=`<tr><td>${esc(name)}</td><td>${money(Math.max(0,balance))}</td></tr>`;
+});
+
+$("udhaarList").innerHTML=html+"</table></div>";
+
+$("collectionList").innerHTML=makeTable(data.collections,[
+["Date",x=>x.date],
+["Customer",x=>x.customer],
+["Received",x=>money(x.amount)]
+],"collections");
+
+}
+
+
+// ADD PRODUCT
+
+$("productForm").onsubmit=async e=>{
+e.preventDefault();
+
+const f=new FormData(e.target);
+
+try{
+await addDoc(path("products"),{
+name:f.get("name"),
+category:f.get("category"),
+purchase:Number(f.get("purchase")),
+selling:Number(f.get("selling")),
+quantity:Number(f.get("quantity")),
+createdAt:serverTimestamp()
+});
+
+e.target.reset();
+msg("Product added successfully.");
+}catch(err){msg(err.message,true);}
+};
+
+
+// PURCHASE WITH STOCK UPDATE
+
+$("purchaseForm").onsubmit=async e=>{
+e.preventDefault();
+
+const f=new FormData(e.target);
+const productId=f.get("product");
+const qty=Number(f.get("quantity"));
+const price=Number(f.get("price"));
+
+try{
+
+const productRef=doc(db,"users",user.uid,"products",productId);
+
+await runTransaction(db,async tx=>{
+
+const snap=await tx.get(productRef);
+if(!snap.exists())throw Error("Product not found.");
+
+const p=snap.data();
+const oldQty=Number(p.quantity||0);
+const newQty=oldQty+qty;
+
+const average=(oldQty*Number(p.purchase||0)+qty*price)/newQty;
+
+tx.update(productRef,{
+quantity:newQty,
+purchase:average
+});
+
+});
+
+const p=data.products.find(x=>x.id===productId);
+
+await addDoc(path("purchase"),{
+productId,
+productName:p?.name||"",
+quantity:qty,
+price,
+total:qty*price,
+supplier:f.get("supplier"),
+date:f.get("date"),
+createdAt:serverTimestamp()
+});
+
+e.target.reset();
+e.target.querySelector('[name="date"]').value=today();
+msg("Purchase saved and stock increased.");
+
+}catch(err){msg(err.message,true);}
+};
+
+
+// SALES WITH AUTOMATIC STOCK DEDUCTION
+
+$("salesForm").onsubmit=async e=>{
+e.preventDefault();
+
+const f=new FormData(e.target);
+const productId=f.get("product");
+const qty=Number(f.get("quantity"));
+const price=Number(f.get("price"));
+
+try{
+
+const productRef=doc(db,"users",user.uid,"products",productId);
+let saleData={};
+
+await runTransaction(db,async tx=>{
+
+const snap=await tx.get(productRef);
+if(!snap.exists())throw Error("Product not found.");
+
+const p=snap.data();
+const stock=Number(p.quantity||0);
+
+if(stock<qty)throw Error("Not enough stock available.");
+
+const cost=Number(p.purchase||0);
+const total=qty*price;
+const profit=total-(qty*cost);
+
+tx.update(productRef,{quantity:stock-qty});
+
+saleData={
+productId,
+productName:p.name,
+quantity:qty,
+price,
+cost,
+total,
+profit,
+date:f.get("date"),
+customer:f.get("customer"),
+payment:f.get("payment")
+};
+
+});
+
+await addDoc(path("sales"),{
+...saleData,
+createdAt:serverTimestamp()
+});
+
+e.target.reset();
+e.target.querySelector('[name="date"]').value=today();
+
+msg("Sale saved. Stock automatically reduced.");
+
+}catch(err){msg(err.message,true);}
+};
+
+
+// EXPENSES
+
+$("expenseForm").onsubmit=async e=>{
+e.preventDefault();
+
+const f=new FormData(e.target);
+
+try{
+await addDoc(path("expenses"),{
+description:f.get("description"),
+amount:Number(f.get("amount")),
+date:f.get("date"),
+category:f.get("category"),
+createdAt:serverTimestamp()
+});
+
+e.target.reset();
+e.target.querySelector('[name="date"]').value=today();
+msg("Expense saved.");
+
+}catch(err){msg(err.message,true);}
+};
+
+
+// UDHAAR
+
+$("udhaarForm").onsubmit=async e=>{
+e.preventDefault();
+
+const f=new FormData(e.target);
+
+try{
+await addDoc(path("udhaar"),{
+customer:f.get("customer"),
+mobile:f.get("mobile"),
+amount:Number(f.get("amount")),
+date:f.get("date"),
+note:f.get("note"),
+createdAt:serverTimestamp()
+});
+
+e.target.reset();
+e.target.querySelector('[name="date"]').value=today();
+msg("Customer udhaar saved.");
+
+}catch(err){msg(err.message,true);}
+};
+
+
+// UDHAAR COLLECTION
+
+$("collectionForm").onsubmit=async e=>{
+e.preventDefault();
+
+const f=new FormData(e.target);
+const customer=f.get("customer");
+const amount=Number(f.get("amount"));
+
+try{
+
+const due=
+data.udhaar.filter(x=>x.customer===customer)
+.reduce((a,x)=>a+Number(x.amount||0),0)
+-data.collections.filter(x=>x.customer===customer)
+.reduce((a,x)=>a+Number(x.amount||0),0)
++data.sales.filter(x=>x.payment==="Credit"&&x.customer===customer)
+.reduce((a,x)=>a+Number(x.total||0),0);
+
+if(amount>due)throw Error("Received amount is more than customer balance.");
+
+await addDoc(path("collections"),{
+customer,
+amount,
+date:f.get("date"),
+createdAt:serverTimestamp()
+});
+
+e.target.reset();
+e.target.querySelector('[name="date"]').value=today();
+msg("Payment received successfully.");
+
+}catch(err){msg(err.message,true);}
+};
+
+
+// DELETE RECORDS
+
+document.addEventListener("click",async e=>{
+
+const btn=e.target.closest("[data-delete]");
+if(!btn)return;
+
+const type=btn.dataset.delete;
+const id=btn.dataset.id;
+
+if(!confirm("Are you sure you want to delete this record?"))return;
+
+try{
+
+if(type==="sales"||type==="purchase"){
+throw Error("Sales and purchase deletion is locked to protect stock accuracy. Contact support for correction.");
+}
+
+await deleteDoc(doc(db,"users",user.uid,type,id));
+msg("Record deleted.");
+
+}catch(err){msg(err.message,true);}
+
+});
+
+
+// REPORTS
+
+$("filterReport").onclick
